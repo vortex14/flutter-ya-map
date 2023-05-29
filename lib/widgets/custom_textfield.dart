@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 
 class CustomTextFieldWidget extends StatefulWidget {
-  const CustomTextFieldWidget({super.key, required this.controller, required this.onSubmitted});
+  const CustomTextFieldWidget({
+    Key? key,
+    required this.controller,
+    required this.onSubmitted,
+  }) : super(key: key);
 
   final TextEditingController controller;
   final Function() onSubmitted;
@@ -27,7 +31,11 @@ class _CustomTextFieldWidgetState extends State<CustomTextFieldWidget> {
 }
 
 class TextFieldRow extends StatefulWidget {
-  const TextFieldRow({super.key, required this.controller, required this.onSubmitted});
+  const TextFieldRow({
+    Key? key,
+    required this.controller,
+    required this.onSubmitted,
+  }) : super(key: key);
   final TextEditingController controller;
   final Function() onSubmitted;
 
