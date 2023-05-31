@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 
 import 'widgets/custom_textfield.dart';
@@ -38,6 +39,12 @@ class _MyAppState extends State<MyApp> {
   final TextEditingController searchController = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    Permission.location.request();
+  }
+
+  @override
   void dispose() {
     controller.dispose();
     searchController.dispose();
@@ -49,172 +56,193 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('YandexMap examples')),
-      body: Column(
-        children: <Widget>[
-          Expanded(
-            child: YandexMap(
-              key: mapKey,
-              mapObjects: mapObjects,
-              onMapCreated: (YandexMapController yandexMapController) async {
-                controller = yandexMapController;
-              },
-            ),
-          ),
-          Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
+      body: FutureBuilder(
+        future: Permission.location.status,
+        builder: (context, AsyncSnapshot<PermissionStatus> snapshot) {
+          switch (snapshot.data) {
+            case PermissionStatus.denied:
+              return Center(
+                  child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('Отображать местоположение:'),
-                  Switch(
-                    value: _isShowingUserLocation,
-                    onChanged: (value) async {
-                      setState(() {
-                        _isShowingUserLocation = value;
-                      });
-                      if (value) {
-                        final Position position = await Geolocator.getCurrentPosition(
-                          desiredAccuracy: LocationAccuracy.high,
-                        );
+                  const Text('Для работы приложения необходим доступ к геолокации'),
+                  TextButton(
+                    onPressed: () => Permission.location.request().then((value) => setState(() {})),
+                    child: const Text('Запросить'),
+                  ),
+                ],
+              ));
 
-                        final mapObjectA = PlacemarkMapObject(
-                          mapId: mapObjectIdA,
-                          point: Point(latitude: position.latitude, longitude: position.longitude),
-                          opacity: 0.7,
-                          icon: PlacemarkIcon.single(
-                            PlacemarkIconStyle(
-                              image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
-                              scale: 0.5,
-                            ),
-                          ),
-                        );
+            default:
+              return Column(
+                children: <Widget>[
+                  Expanded(
+                    child: YandexMap(
+                      key: mapKey,
+                      mapObjects: mapObjects,
+                      onMapCreated: (YandexMapController yandexMapController) async {
+                        controller = yandexMapController;
+                      },
+                    ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text('Отображать местоположение:'),
+                          Switch(
+                            value: _isShowingUserLocation,
+                            onChanged: (value) async {
+                              setState(() {
+                                _isShowingUserLocation = value;
+                              });
+                              if (value) {
+                                final Position position = await Geolocator.getCurrentPosition(
+                                  desiredAccuracy: LocationAccuracy.high,
+                                );
 
-                        setState(() {
-                          mapObjects.add(mapObjectA);
-                        });
-                      } else {
-                        setState(() {
-                          mapObjects.removeWhere((el) => el.mapId == mapObjectIdA);
-                        });
-                        // await controller.toggleUserLayer(visible: false);
-                      }
-                    },
-                  ),
-                ],
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Checkbox(
-                    value: _isShowingFirst,
-                    onChanged: (value) {
-                      if (value!) {
-                        final mapObject = PlacemarkMapObject(
-                          mapId: mapObjectId1,
-                          point: const Point(latitude: 59.93296, longitude: 30.320045),
-                          opacity: 0.7,
-                          icon: PlacemarkIcon.single(
-                            PlacemarkIconStyle(
-                              image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
-                              scale: 0.5,
-                            ),
+                                final mapObjectA = PlacemarkMapObject(
+                                  mapId: mapObjectIdA,
+                                  point: Point(latitude: position.latitude, longitude: position.longitude),
+                                  opacity: 0.7,
+                                  icon: PlacemarkIcon.single(
+                                    PlacemarkIconStyle(
+                                      image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
+                                      scale: 0.5,
+                                    ),
+                                  ),
+                                );
+
+                                setState(() {
+                                  mapObjects.add(mapObjectA);
+                                });
+                              } else {
+                                setState(() {
+                                  mapObjects.removeWhere((el) => el.mapId == mapObjectIdA);
+                                });
+                                // await controller.toggleUserLayer(visible: false);
+                              }
+                            },
                           ),
-                        );
-                        setState(() {
-                          mapObjects.add(mapObject);
-                        });
-                      } else {
-                        setState(() {
-                          mapObjects.removeWhere((el) => el.mapId == mapObjectId1);
-                        });
-                      }
-                      setState(() {
-                        _isShowingFirst = value;
-                      });
-                    },
-                  ),
-                  const Text('Отображать первую точку'),
-                ],
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Checkbox(
-                    value: _isShowingSecond,
-                    onChanged: (value) {
-                      if (value!) {
-                        final mapObject = PlacemarkMapObject(
-                          mapId: mapObjectId2,
-                          point: const Point(latitude: 60.02202, longitude: 30.328777),
-                          opacity: 0.7,
-                          icon: PlacemarkIcon.single(
-                            PlacemarkIconStyle(
-                              image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
-                              scale: 0.5,
-                            ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Checkbox(
+                            value: _isShowingFirst,
+                            onChanged: (value) {
+                              if (value!) {
+                                final mapObject = PlacemarkMapObject(
+                                  mapId: mapObjectId1,
+                                  point: const Point(latitude: 59.93296, longitude: 30.320045),
+                                  opacity: 0.7,
+                                  icon: PlacemarkIcon.single(
+                                    PlacemarkIconStyle(
+                                      image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
+                                      scale: 0.5,
+                                    ),
+                                  ),
+                                );
+                                setState(() {
+                                  mapObjects.add(mapObject);
+                                });
+                              } else {
+                                setState(() {
+                                  mapObjects.removeWhere((el) => el.mapId == mapObjectId1);
+                                });
+                              }
+                              setState(() {
+                                _isShowingFirst = value;
+                              });
+                            },
                           ),
-                        );
-                        setState(() {
-                          mapObjects.add(mapObject);
-                        });
-                      } else {
-                        setState(() {
-                          mapObjects.removeWhere((el) => el.mapId == mapObjectId2);
-                        });
-                      }
-                      setState(() {
-                        _isShowingSecond = value;
-                      });
-                    },
-                  ),
-                  const Text('Отображать вторую точку'),
-                ],
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Checkbox(
-                    value: _isShowingThird,
-                    onChanged: (value) {
-                      if (value!) {
-                        final mapObject = PlacemarkMapObject(
-                          mapId: mapObjectId3,
-                          point: const Point(latitude: 59.852168, longitude: 30.307788),
-                          opacity: 0.7,
-                          icon: PlacemarkIcon.single(
-                            PlacemarkIconStyle(
-                              image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
-                              scale: 0.5,
-                            ),
+                          const Text('Отображать первую точку'),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Checkbox(
+                            value: _isShowingSecond,
+                            onChanged: (value) {
+                              if (value!) {
+                                final mapObject = PlacemarkMapObject(
+                                  mapId: mapObjectId2,
+                                  point: const Point(latitude: 60.02202, longitude: 30.328777),
+                                  opacity: 0.7,
+                                  icon: PlacemarkIcon.single(
+                                    PlacemarkIconStyle(
+                                      image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
+                                      scale: 0.5,
+                                    ),
+                                  ),
+                                );
+                                setState(() {
+                                  mapObjects.add(mapObject);
+                                });
+                              } else {
+                                setState(() {
+                                  mapObjects.removeWhere((el) => el.mapId == mapObjectId2);
+                                });
+                              }
+                              setState(() {
+                                _isShowingSecond = value;
+                              });
+                            },
                           ),
-                        );
-                        setState(() {
-                          mapObjects.add(mapObject);
-                        });
-                      } else {
-                        setState(() {
-                          mapObjects.removeWhere((el) => el.mapId == mapObjectId3);
-                        });
-                      }
-                      setState(() {
-                        _isShowingThird = value;
-                      });
-                    },
+                          const Text('Отображать вторую точку'),
+                        ],
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Checkbox(
+                            value: _isShowingThird,
+                            onChanged: (value) {
+                              if (value!) {
+                                final mapObject = PlacemarkMapObject(
+                                  mapId: mapObjectId3,
+                                  point: const Point(latitude: 59.852168, longitude: 30.307788),
+                                  opacity: 0.7,
+                                  icon: PlacemarkIcon.single(
+                                    PlacemarkIconStyle(
+                                      image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
+                                      scale: 0.5,
+                                    ),
+                                  ),
+                                );
+                                setState(() {
+                                  mapObjects.add(mapObject);
+                                });
+                              } else {
+                                setState(() {
+                                  mapObjects.removeWhere((el) => el.mapId == mapObjectId3);
+                                });
+                              }
+                              setState(() {
+                                _isShowingThird = value;
+                              });
+                            },
+                          ),
+                          const Text('Отображать третью точку'),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: CustomTextFieldWidget(
+                          onSubmitted: () => _search(),
+                          controller: searchController,
+                        ),
+                      )
+                    ],
                   ),
-                  const Text('Отображать третью точку'),
                 ],
-              ),
-              Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: CustomTextFieldWidget(
-                  onSubmitted: () => _search(),
-                  controller: searchController,
-                ),
-              )
-            ],
-          ),
-        ],
+              );
+          }
+        },
       ),
     );
   }
