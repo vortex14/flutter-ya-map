@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -30,9 +31,6 @@ class _MyAppState extends State<MyApp> {
 
   final List<MapObject> mapObjects = [];
 
-  final MapObjectId mapObjectId1 = const MapObjectId('first');
-  final MapObjectId mapObjectId2 = const MapObjectId('two');
-  final MapObjectId mapObjectId3 = const MapObjectId('three');
   final MapObjectId mapObjectIdA = const MapObjectId('A');
   final MapObjectId mapObjectIdB = const MapObjectId('B');
 
@@ -72,172 +70,82 @@ class _MyAppState extends State<MyApp> {
                   ),
                 ],
               ));
-
             default:
-              return Column(
+              return Stack(
+                alignment: Alignment.bottomCenter,
                 children: <Widget>[
-                  Expanded(
-                    child: YandexMap(
-                      key: mapKey,
-                      mapObjects: mapObjects,
-                      onMapCreated: (YandexMapController yandexMapController) async {
-                        controller = yandexMapController;
-                      },
-                    ),
-                  ),
-                  Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text('Отображать местоположение:'),
-                          Switch(
-                            value: _isShowingUserLocation,
-                            onChanged: (value) async {
-                              setState(() {
-                                _isShowingUserLocation = value;
-                              });
-                              if (value) {
-                                final Position position = await Geolocator.getCurrentPosition(
-                                  desiredAccuracy: LocationAccuracy.high,
-                                );
-
-                                final mapObjectA = PlacemarkMapObject(
-                                  mapId: mapObjectIdA,
-                                  point: Point(latitude: position.latitude, longitude: position.longitude),
-                                  opacity: 0.7,
-                                  icon: PlacemarkIcon.single(
-                                    PlacemarkIconStyle(
-                                      image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
-                                      scale: 0.5,
-                                    ),
-                                  ),
-                                );
-
-                                setState(() {
-                                  mapObjects.add(mapObjectA);
-                                });
-                              } else {
-                                setState(() {
-                                  mapObjects.removeWhere((el) => el.mapId == mapObjectIdA);
-                                });
-                                // await controller.toggleUserLayer(visible: false);
-                              }
-                            },
+                  YandexMap(
+                    key: mapKey,
+                    mapObjects: mapObjects,
+                    onMapCreated: (YandexMapController yandexMapController) async {
+                      controller = yandexMapController;
+                      Position position = await Geolocator.getCurrentPosition();
+                      yandexMapController.moveCamera(
+                        CameraUpdate.newCameraPosition(
+                          CameraPosition(
+                            target: Point(latitude: position.latitude, longitude: position.longitude),
+                            zoom: 15,
                           ),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Checkbox(
-                            value: _isShowingFirst,
-                            onChanged: (value) {
-                              if (value!) {
-                                final mapObject = PlacemarkMapObject(
-                                  mapId: mapObjectId1,
-                                  point: const Point(latitude: 59.93296, longitude: 30.320045),
-                                  opacity: 0.7,
-                                  icon: PlacemarkIcon.single(
-                                    PlacemarkIconStyle(
-                                      image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
-                                      scale: 0.5,
-                                    ),
-                                  ),
-                                );
-                                setState(() {
-                                  mapObjects.add(mapObject);
-                                });
-                              } else {
-                                setState(() {
-                                  mapObjects.removeWhere((el) => el.mapId == mapObjectId1);
-                                });
-                              }
-                              setState(() {
-                                _isShowingFirst = value;
-                              });
-                            },
-                          ),
-                          const Text('Отображать первую точку'),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Checkbox(
-                            value: _isShowingSecond,
-                            onChanged: (value) {
-                              if (value!) {
-                                final mapObject = PlacemarkMapObject(
-                                  mapId: mapObjectId2,
-                                  point: const Point(latitude: 60.02202, longitude: 30.328777),
-                                  opacity: 0.7,
-                                  icon: PlacemarkIcon.single(
-                                    PlacemarkIconStyle(
-                                      image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
-                                      scale: 0.5,
-                                    ),
-                                  ),
-                                );
-                                setState(() {
-                                  mapObjects.add(mapObject);
-                                });
-                              } else {
-                                setState(() {
-                                  mapObjects.removeWhere((el) => el.mapId == mapObjectId2);
-                                });
-                              }
-                              setState(() {
-                                _isShowingSecond = value;
-                              });
-                            },
-                          ),
-                          const Text('Отображать вторую точку'),
-                        ],
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Checkbox(
-                            value: _isShowingThird,
-                            onChanged: (value) {
-                              if (value!) {
-                                final mapObject = PlacemarkMapObject(
-                                  mapId: mapObjectId3,
-                                  point: const Point(latitude: 59.852168, longitude: 30.307788),
-                                  opacity: 0.7,
-                                  icon: PlacemarkIcon.single(
-                                    PlacemarkIconStyle(
-                                      image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
-                                      scale: 0.5,
-                                    ),
-                                  ),
-                                );
-                                setState(() {
-                                  mapObjects.add(mapObject);
-                                });
-                              } else {
-                                setState(() {
-                                  mapObjects.removeWhere((el) => el.mapId == mapObjectId3);
-                                });
-                              }
-                              setState(() {
-                                _isShowingThird = value;
-                              });
-                            },
-                          ),
-                          const Text('Отображать третью точку'),
-                        ],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: CustomTextFieldWidget(
-                          onSubmitted: () => _search(),
-                          controller: searchController,
                         ),
-                      )
-                    ],
+                        animation: const MapAnimation(),
+                      );
+                      final mapObjectA = PlacemarkMapObject(
+                        mapId: mapObjectIdA,
+                        point: Point(latitude: position.latitude, longitude: position.longitude),
+                        opacity: 0.7,
+                        icon: PlacemarkIcon.single(
+                          PlacemarkIconStyle(
+                            image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
+                            scale: 0.5,
+                          ),
+                        ),
+                      );
+                      setState(() {
+                        if (mapObjects.isEmpty) {
+                          mapObjects.add(mapObjectA);
+                        } else {
+                          mapObjects[mapObjects.indexOf(mapObjects.firstWhere((element) => element.mapId == mapObjectA.mapId))] = mapObjectA;
+                        }
+                      });
+                      Geolocator.getPositionStream().listen((Position position) {
+                        yandexMapController.moveCamera(
+                          CameraUpdate.newCameraPosition(
+                            CameraPosition(
+                              target: Point(latitude: position.latitude, longitude: position.longitude),
+                              zoom: 15,
+                            ),
+                          ),
+                          animation: const MapAnimation(),
+                        );
+                        final mapObjectA = PlacemarkMapObject(
+                          mapId: mapObjectIdA,
+                          point: Point(latitude: position.latitude, longitude: position.longitude),
+                          opacity: 0.7,
+                          icon: PlacemarkIcon.single(
+                            PlacemarkIconStyle(
+                              image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
+                              scale: 0.5,
+                            ),
+                          ),
+                        );
+                        setState(() {
+                          if (mapObjects.isEmpty) {
+                            mapObjects.add(mapObjectA);
+                          } else {
+                            mapObjects[mapObjects.indexOf(mapObjects.firstWhere((element) => element.mapId == mapObjectA.mapId))] = mapObjectA;
+                          }
+                        });
+                      });
+                    },
+                  ),
+                  Positioned(
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: CustomTextFieldWidget(
+                        onSubmitted: () => _search(),
+                        controller: searchController,
+                      ),
+                    ),
                   ),
                 ],
               );
@@ -264,9 +172,6 @@ class _MyAppState extends State<MyApp> {
 
     await resultWithSession.result.then((result) async {
       setState(() {
-        mapObjects.removeWhere((el) => el.mapId == mapObjectId3);
-        mapObjects.removeWhere((el) => el.mapId == mapObjectId2);
-        mapObjects.removeWhere((el) => el.mapId == mapObjectId1);
         _isShowingFirst = false;
         _isShowingSecond = false;
         _isShowingThird = false;
@@ -287,21 +192,9 @@ class _MyAppState extends State<MyApp> {
           ),
         );
         // получаем текущию геопозицию
-        final Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high,
-        );
+        // Geolocator.getPositionStream().listen((Position position) async {
         // устанавливаем точку А
-        final mapObjectA = PlacemarkMapObject(
-          mapId: mapObjectIdA,
-          point: Point(latitude: position.latitude, longitude: position.longitude),
-          opacity: 0.7,
-          icon: PlacemarkIcon.single(
-            PlacemarkIconStyle(
-              image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
-              scale: 0.5,
-            ),
-          ),
-        );
+        final mapObjectA = mapObjects.firstWhere((mapObject) => mapObject.mapId == mapObjectIdA) as PlacemarkMapObject;
         // Запрашиваем маршрут
         var resultWithSession = YandexDriving.requestRoutes(points: [
           RequestPoint(point: mapObjectA.point, requestPointType: RequestPointType.wayPoint),
@@ -309,6 +202,10 @@ class _MyAppState extends State<MyApp> {
         ], drivingOptions: const DrivingOptions(initialAzimuth: 0, routesCount: 5, avoidTolls: true));
 
         final drivingResult = await resultWithSession.result;
+
+        // удаляем предыдущий маршрут
+        mapObjects.removeWhere((mapObject) => mapObject is PolylineMapObject);
+        // add new routes
         drivingResult.routes!.asMap().forEach((i, route) {
           mapObjects.add(PolylineMapObject(
             mapId: MapObjectId('route_${i}_polyline'),
@@ -319,9 +216,14 @@ class _MyAppState extends State<MyApp> {
         });
 
         setState(() {
-          mapObjects.add(mapObjectA);
-          mapObjects.add(mapObjectB);
+          // update B
+          if (!mapObjects.contains(mapObjectB)) {
+            mapObjects.add(mapObjectB);
+          } else {
+            mapObjects[mapObjects.indexOf(mapObjects.firstWhere((element) => element.mapId == mapObjectB.mapId))] = mapObjectB;
+          }
         });
+        // });
       }
     });
   }

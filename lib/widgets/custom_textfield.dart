@@ -20,10 +20,17 @@ class _CustomTextFieldWidgetState extends State<CustomTextFieldWidget> {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.1),
+        color: Colors.white,
         borderRadius: const BorderRadius.all(
           Radius.circular(10.0),
         ),
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 5,
+            offset: const Offset(0, 1),
+            color: Colors.black.withOpacity(0.3),
+          ),
+        ],
       ),
       child: TextFieldRow(controller: widget.controller, onSubmitted: widget.onSubmitted),
     );
