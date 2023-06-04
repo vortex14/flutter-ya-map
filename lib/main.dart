@@ -272,10 +272,9 @@ class _YandexWidgetState extends State<YandexWidget> {
     final resultWithSession = YandexSearch.searchByText(
       searchText: query,
       geometry: Geometry.fromPoint(userPoint),
-      searchOptions: SearchOptions(
+      searchOptions: const SearchOptions(
         geometry: false,
         resultPageSize: 15,
-        userPosition: userPoint,
       ),
     );
 
