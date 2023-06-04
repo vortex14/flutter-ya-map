@@ -1,4 +1,4 @@
-import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -6,35 +6,76 @@ import 'package:geolocator/geolocator.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:yandex_mapkit/yandex_mapkit.dart';
 
+import 'widgets/change_theme_btn.dart';
 import 'widgets/custom_textfield.dart';
 
 void main() {
-  runApp(const MaterialApp(home: MyApp()));
+  runApp(const MaterialApp(home: YandexWidget()));
 }
 
-class MyApp extends StatefulWidget {
-  const MyApp({Key? key}) : super(key: key);
+class YandexWidget extends StatefulWidget {
+  const YandexWidget({Key? key}) : super(key: key);
 
   @override
-  State<MyApp> createState() => _MyAppState();
+  State<YandexWidget> createState() => _YandexWidgetState();
 }
 
-class _MyAppState extends State<MyApp> {
+class _YandexWidgetState extends State<YandexWidget> {
   late YandexMapController controller;
   GlobalKey mapKey = GlobalKey();
-
-  bool _isShowingUserLocation = false;
-
-  bool _isShowingFirst = false;
-  bool _isShowingSecond = false;
-  bool _isShowingThird = false;
 
   final List<MapObject> mapObjects = [];
 
   final MapObjectId mapObjectIdA = const MapObjectId('A');
   final MapObjectId mapObjectIdB = const MapObjectId('B');
 
+  bool _isDarkMapTheme = false;
+
   final TextEditingController searchController = TextEditingController();
+  final List<SearchItem> suggestions = [];
+
+  final darkThemeMap = [
+    {
+      "tags": {
+        "all": ["road"]
+      },
+      "stylers": {
+        "color": "0x535353",
+      }
+    },
+    {
+      "tags": {
+        "all": ["landscape"]
+      },
+      "stylers": {
+        "color": "0x222222",
+      }
+    },
+    {
+      "tags": {
+        "all": ["admin"]
+      },
+      "stylers": {
+        "color": "0x000000",
+      }
+    },
+    {
+      "tags": {
+        "all": ["water"]
+      },
+      "stylers": {
+        "color": "0x000000",
+      }
+    },
+    {
+      "tags": {
+        "all": ["structure"]
+      },
+      "stylers": {
+        "color": "0x333333",
+      }
+    },
+  ];
 
   @override
   void initState() {
@@ -108,15 +149,15 @@ class _MyAppState extends State<MyApp> {
                         }
                       });
                       Geolocator.getPositionStream().listen((Position position) {
-                        yandexMapController.moveCamera(
-                          CameraUpdate.newCameraPosition(
-                            CameraPosition(
-                              target: Point(latitude: position.latitude, longitude: position.longitude),
-                              zoom: 15,
-                            ),
-                          ),
-                          animation: const MapAnimation(),
-                        );
+                        // yandexMapController.moveCamera(
+                        //   CameraUpdate.newCameraPosition(
+                        //     CameraPosition(
+                        //       target: Point(latitude: position.latitude, longitude: position.longitude),
+                        //       zoom: 15,
+                        //     ),
+                        //   ),
+                        //   animation: const MapAnimation(),
+                        // );
                         final mapObjectA = PlacemarkMapObject(
                           mapId: mapObjectIdA,
                           point: Point(latitude: position.latitude, longitude: position.longitude),
@@ -138,12 +179,74 @@ class _MyAppState extends State<MyApp> {
                       });
                     },
                   ),
+                  Align(
+                    alignment: Alignment.topRight,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: ChangeThemeBtnWidget(
+                        backgroundColor: _isDarkMapTheme ? Colors.black.withOpacity(0.8) : Colors.white,
+                        iconColor: _isDarkMapTheme ? Colors.white : Colors.black,
+                        onTap: () {
+                          setState(() {
+                            _isDarkMapTheme = !_isDarkMapTheme;
+                            if (_isDarkMapTheme) {
+                              controller.setMapStyle(jsonEncode(darkThemeMap));
+                            } else {
+                              controller.setMapStyle('');
+                            }
+                          });
+                        },
+                      ),
+                    ),
+                  ),
                   Positioned(
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
-                      child: CustomTextFieldWidget(
-                        onSubmitted: () => _search(),
-                        controller: searchController,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (suggestions.isEmpty) const Spacer(),
+                          if (suggestions.isNotEmpty)
+                            Expanded(
+                              child: ClipRRect(
+                                borderRadius: const BorderRadius.only(topLeft: Radius.circular(8.0), topRight: Radius.circular(8.0)),
+                                child: ListView.separated(
+                                  reverse: true,
+                                  itemCount: suggestions.length,
+                                  separatorBuilder: (BuildContext context, int index) => const Divider(height: 1, thickness: 0.5, color: Colors.grey),
+                                  itemBuilder: (context, i) {
+                                    return DecoratedBox(
+                                      decoration: const BoxDecoration(
+                                        color: Colors.white,
+                                      ),
+                                      child: ListTile(
+                                        title: Text(suggestions[i].name),
+                                        subtitle: Text(
+                                          suggestions[i].toponymMetadata != null
+                                              ? suggestions[i].toponymMetadata!.address.formattedAddress
+                                              : suggestions[i].businessMetadata != null
+                                                  ? suggestions[i].businessMetadata!.address.formattedAddress
+                                                  : '',
+                                          maxLines: 2,
+                                        ),
+                                        tileColor: Colors.white,
+                                        onTap: () {
+                                          _navigate(Point(latitude: suggestions[i].geometry[0].point!.latitude, longitude: suggestions[i].geometry[0].point!.longitude));
+                                          _clearSuggestions();
+                                        },
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          CustomTextFieldWidget(
+                            onSearchTextChanged: () => _search(),
+                            onCleanTextField: () => _clearSuggestions(),
+                            controller: searchController,
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -155,76 +258,84 @@ class _MyAppState extends State<MyApp> {
     );
   }
 
+  void _clearSuggestions() {
+    setState(() {
+      suggestions.clear();
+    });
+  }
+
   void _search() async {
     final query = searchController.text;
+    final userPosition = await Geolocator.getCurrentPosition();
+    final userPoint = Point(latitude: userPosition.latitude, longitude: userPosition.longitude);
 
     final resultWithSession = YandexSearch.searchByText(
       searchText: query,
-      geometry: Geometry.fromBoundingBox(const BoundingBox(
-        southWest: Point(latitude: 55.76996383933034, longitude: 37.57483142322235),
-        northEast: Point(latitude: 55.785322774728414, longitude: 37.590924677311705),
-      )),
-      searchOptions: const SearchOptions(
-        searchType: SearchType.geo,
+      geometry: Geometry.fromPoint(userPoint),
+      searchOptions: SearchOptions(
         geometry: false,
+        resultPageSize: 15,
+        userPosition: userPoint,
       ),
     );
 
     await resultWithSession.result.then((result) async {
-      setState(() {
-        _isShowingFirst = false;
-        _isShowingSecond = false;
-        _isShowingThird = false;
-      });
-
       if (result.items != null && result.items!.isNotEmpty) {
-        searchController.text = result.items![0].name;
-        // устанавливаем точку Б
-        final mapObjectB = PlacemarkMapObject(
-          mapId: mapObjectIdB,
-          point: result.items![0].geometry.first.point!,
-          opacity: 0.7,
-          icon: PlacemarkIcon.single(
-            PlacemarkIconStyle(
-              image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
-              scale: 0.5,
-            ),
-          ),
-        );
-        // получаем текущию геопозицию
-        // Geolocator.getPositionStream().listen((Position position) async {
-        // устанавливаем точку А
-        final mapObjectA = mapObjects.firstWhere((mapObject) => mapObject.mapId == mapObjectIdA) as PlacemarkMapObject;
-        // Запрашиваем маршрут
-        var resultWithSession = YandexDriving.requestRoutes(points: [
-          RequestPoint(point: mapObjectA.point, requestPointType: RequestPointType.wayPoint),
-          RequestPoint(point: mapObjectB.point, requestPointType: RequestPointType.wayPoint),
-        ], drivingOptions: const DrivingOptions(initialAzimuth: 0, routesCount: 5, avoidTolls: true));
-
-        final drivingResult = await resultWithSession.result;
-
-        // удаляем предыдущий маршрут
-        mapObjects.removeWhere((mapObject) => mapObject is PolylineMapObject);
-        // add new routes
-        drivingResult.routes!.asMap().forEach((i, route) {
-          mapObjects.add(PolylineMapObject(
-            mapId: MapObjectId('route_${i}_polyline'),
-            polyline: Polyline(points: route.geometry),
-            strokeColor: Colors.primaries[Random().nextInt(Colors.primaries.length)],
-            strokeWidth: 3,
-          ));
-        });
-
         setState(() {
-          // update B
-          if (!mapObjects.contains(mapObjectB)) {
-            mapObjects.add(mapObjectB);
-          } else {
-            mapObjects[mapObjects.indexOf(mapObjects.firstWhere((element) => element.mapId == mapObjectB.mapId))] = mapObjectB;
-          }
+          if (searchController.value.text.isNotEmpty) suggestions.replaceRange(0, suggestions.length, result.items!);
         });
-        // });
+      } else {
+        _clearSuggestions();
       }
+    });
+  }
+
+  void _navigate(Point point) async {
+    // устанавливаем точку Б
+    final mapObjectB = PlacemarkMapObject(
+      mapId: mapObjectIdB,
+      point: point,
+      opacity: 0.7,
+      icon: PlacemarkIcon.single(
+        PlacemarkIconStyle(
+          image: BitmapDescriptor.fromAssetImage('assets/arrow.png'),
+          scale: 0.5,
+        ),
+      ),
+    );
+
+    // устанавливаем точку А
+    PlacemarkMapObject mapObjectA = mapObjects.firstWhere((mapObject) => mapObject.mapId == mapObjectIdA) as PlacemarkMapObject;
+
+    // Запрашиваем маршрут
+    var resultWithSession = YandexDriving.requestRoutes(points: [
+      RequestPoint(point: mapObjectA.point, requestPointType: RequestPointType.wayPoint),
+      RequestPoint(point: mapObjectB.point, requestPointType: RequestPointType.wayPoint),
+    ], drivingOptions: const DrivingOptions(initialAzimuth: 0, routesCount: 3, avoidTolls: true));
+
+    final drivingResult = await resultWithSession.result;
+
+    // удаляем предыдущий маршрут
+    mapObjects.removeWhere((mapObject) => mapObject is PolylineMapObject);
+    // add new routes
+    drivingResult.routes!.asMap().forEach((i, route) {
+      mapObjects.add(PolylineMapObject(
+          mapId: MapObjectId('route_${i}_polyline'), polyline: Polyline(points: route.geometry), strokeColor: Colors.primaries[Random().nextInt(Colors.primaries.length)], strokeWidth: 3, dashLength: 10, dashOffset: 5, gapLength: 5));
+    });
+
+    setState(() {
+      // update B
+      if (!mapObjects.contains(mapObjectB)) {
+        mapObjects.add(mapObjectB);
+      } else {
+        mapObjects[mapObjects.indexOf(mapObjects.firstWhere((element) => element.mapId == mapObjectB.mapId))] = mapObjectB;
+      }
+    });
+
+    // получаем текущию геопозицию
+    Geolocator.getPositionStream().listen((Position position) async {
+      // устанавливаем точку А
+      mapObjectA = mapObjects.firstWhere((mapObject) => mapObject.mapId == mapObjectIdA) as PlacemarkMapObject;
     });
   }
 }

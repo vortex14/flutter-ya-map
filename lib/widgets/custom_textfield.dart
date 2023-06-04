@@ -4,11 +4,13 @@ class CustomTextFieldWidget extends StatefulWidget {
   const CustomTextFieldWidget({
     Key? key,
     required this.controller,
-    required this.onSubmitted,
+    required this.onSearchTextChanged,
+    required this.onCleanTextField,
   }) : super(key: key);
 
   final TextEditingController controller;
-  final Function() onSubmitted;
+  final Function() onSearchTextChanged;
+  final Function() onCleanTextField;
 
   @override
   State<CustomTextFieldWidget> createState() => _CustomTextFieldWidgetState();
@@ -32,7 +34,11 @@ class _CustomTextFieldWidgetState extends State<CustomTextFieldWidget> {
           ),
         ],
       ),
-      child: TextFieldRow(controller: widget.controller, onSubmitted: widget.onSubmitted),
+      child: TextFieldRow(
+        controller: widget.controller,
+        onSearchTextChanged: widget.onSearchTextChanged,
+        onCleanTextField: widget.onCleanTextField,
+      ),
     );
   }
 }
@@ -41,10 +47,12 @@ class TextFieldRow extends StatefulWidget {
   const TextFieldRow({
     Key? key,
     required this.controller,
-    required this.onSubmitted,
+    required this.onSearchTextChanged,
+    required this.onCleanTextField,
   }) : super(key: key);
   final TextEditingController controller;
-  final Function() onSubmitted;
+  final Function() onSearchTextChanged;
+  final Function() onCleanTextField;
 
   @override
   State<TextFieldRow> createState() => _TextFieldRowState();
@@ -78,17 +86,9 @@ class _TextFieldRowState extends State<TextFieldRow> {
         const SizedBox(width: 8.0),
         Expanded(
           child: TextField(
-            onSubmitted: (value) {
-              if (value.isNotEmpty) {
-                widget.onSubmitted();
-                setState(() {
-                  textFieldEmpty = false;
-                });
-              } else {
-                setState(() {
-                  textFieldEmpty = true;
-                });
-              }
+            onChanged: (value) {
+              widget.onSearchTextChanged();
+              if (value.isEmpty) widget.onCleanTextField();
             },
             controller: widget.controller,
             style: const TextStyle(fontSize: 16.0),
